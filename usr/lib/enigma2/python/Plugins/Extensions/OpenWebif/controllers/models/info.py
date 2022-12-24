@@ -288,6 +288,8 @@ def getInfo(session=None, need_fullinfo=False):
 			chipset = "bcm73625"
 		elif model in ("dm900", "dm920"):
 			chipset = "bcm7252S"
+		elif model in ("dreamone", "dreamtwo"):
+			chipset = "meson64"
 
 	if fileExists("/proc/stb/info/chipset"):
 		f = open("/proc/stb/info/chipset", 'r')

@@ -597,6 +597,12 @@ def getAllInfo():
 		elif procmodel == "dm8000" and orgdream:
 			brand = "Dream Multimedia"
 			model = "DM8000"
+		elif procmodel == "dreamone" and orgdream:
+			brand = "Dream Multimedia"
+			model = "dreamone"
+		elif procmodel == "dreamtwo" and orgdream:
+			brand = "Dream Multimedia"
+			model = "dreamtwo"
 		else:
 			model = procmodel
 
@@ -719,7 +725,7 @@ def getAllInfo():
 		remote = "xcombo"
 	elif procmodel == "dm8000" and orgdream:
 		remote = "dmm1"
-	elif procmodel in ("dm7080", "dm7020hd", "dm7020hdv2", "dm800sev2", "dm500hdv2", "dm520", "dm820", "dm900", "dm920"):
+	elif procmodel in ("dm7080", "dm7020hd", "dm7020hdv2", "dm800sev2", "dm500hdv2", "dm520", "dm820", "dm900", "dm920", "dreamone", "dreamtwo"):
 		remote = "dmm2"
 	elif procmodel == "wetekplay":
 		remote = procmodel
