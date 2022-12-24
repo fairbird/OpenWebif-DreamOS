@@ -154,6 +154,9 @@ echo "#                   Edit by Raed                        #"
 echo "#                     support                           #"
 echo "#   https://www.tunisia-sat.com/forums/threads/3902353/ #"
 echo "#########################################################"
-sleep 3
-killall enigma2
+sleep 2
+# Disable Webinterface before restart enigma2 to active enable of openwebif
+systemctl stop enigma2
+sed -i 's/config.plugins.Webinterface.enabled=true/config.plugins.Webinterface.enabled=false/g' '/etc/enigma2/settings' > /dev/null 2>&1
+systemctl start enigma2
 exit 0
