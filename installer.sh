@@ -14,6 +14,15 @@ exit 1
 fi
 fi
 
+if [ ! -f /var/lib/dpkg/status ]; then
+echo "**********************************************************"
+echo "*                         SORRY                          *"
+echo "*              Plugin only for DreamOs Image             *"
+echo "*                     RAED - Fairbird                    *"
+echo "**********************************************************"
+exit 1
+fi
+
 echo ""
 # Find name of device
 STATUS=/var/lib/dpkg/status
