@@ -10,8 +10,10 @@ echo "*                         SORRY                          *"
 echo "*                Not Compatible with (OE1.6)             *"
 echo "*                     RAED - Fairbird                    *"
 echo "**********************************************************"
-exit 1 
-else
+exit 1
+fi
+fi
+
 echo ""
 # Find name of device
 STATUS=/var/lib/dpkg/status
@@ -55,7 +57,6 @@ fi
 if [ $aio_grab = 'True' -a $python_shell = 'True' -a $python_json = 'True' -a $python_compression = 'True' -a $python_misc = 'True' -a $python_pyopenssl = 'True' -a $python_numbers = 'True' ]; then
 	echo "All depend packages Installed"
 else
-echo "All depend packages Installed"
 	echo "Download and install depend packages ....."
 	dpkg --configure -a;
 	apt-get update;
@@ -63,7 +64,7 @@ echo "All depend packages Installed"
 	apt-get install -f -y;
 fi
 # Make more check depend packges
-if grep -q aio_grab $STATUS ; then
+if grep -q aio-grab $STATUS ; then
      echo ""
 else
      echo "Missing (aio_grab) package"
@@ -92,11 +93,13 @@ if grep -q python-misc $STATUS ; then
 else
      echo "Missing (python-misc) package"
 exit 1
+fi
 if grep -q python-pyopenssl $STATUS ; then
      echo ""
 else
      echo "Missing (python-pyopenssl) package"
 exit 1
+fi
 if grep -q python-numbers $STATUS ; then
      echo ""
 else
@@ -136,7 +139,6 @@ rm -rf *main* > /dev/null 2>&1
 set +e
 cd ..
 sync
-
 echo "#########################################################"
 echo "#           OpenWebif INSTALLED SUCCESSFULLY            #"
 echo "#                   Edit by Raed                        #"              
@@ -145,6 +147,4 @@ echo "#   https://www.tunisia-sat.com/forums/threads/3902353/ #"
 echo "#########################################################"
 sleep 3
 killall enigma2
-fi
-fi
 exit 0
