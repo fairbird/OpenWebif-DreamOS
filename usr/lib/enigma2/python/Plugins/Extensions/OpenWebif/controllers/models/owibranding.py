@@ -597,11 +597,9 @@ def getAllInfo():
 		elif procmodel == "dm8000" and orgdream:
 			brand = "Dream Multimedia"
 			model = "DM8000"
-		elif procmodel == "dreamone" and orgdream:
-			brand = "Dream Multimedia"
+		elif procmodel == "one":
 			model = "dreamone"
-		elif procmodel == "dreamtwo" and orgdream:
-			brand = "Dream Multimedia"
+		elif procmodel == "two":
 			model = "dreamtwo"
 		else:
 			model = procmodel
