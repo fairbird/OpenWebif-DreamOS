@@ -1,4 +1,3 @@
-#!/usr/bin/python
 # -*- coding: utf-8 -*-
 
 ##########################################################################
@@ -189,7 +188,7 @@ class MovieList():
 		rtags = {}
 		for tag, movies in list(tags.items()):
 			if (len(movies) > 1) or (tag in realtags):
-				movies = tuple(movies) # a tuple can be hashed, but a list not
+				movies = tuple(movies)  # a tuple can be hashed, but a list not
 				item = rtags.get(movies, [])
 				if not item:
 					rtags[movies] = item
@@ -220,5 +219,5 @@ class MovieList():
 				continue
 			else:
 				match = ' '.join(tags)
-				if len(match) > 2: #Omit small words
+				if len(match) > 2:  # Omit small words
 					self.tags[match] = set(tags)

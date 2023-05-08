@@ -1,4 +1,3 @@
-#!/usr/bin/python
 # -*- coding: utf-8 -*-
 
 ##########################################################################
@@ -36,10 +35,7 @@ from Plugins.Extensions.OpenWebif.sslcertificate import SSLCertificateGenerator,
 from socket import has_ipv6
 from OpenSSL import SSL
 from OpenSSL import crypto
-
-### Edit RAED ###
-from Plugins.Extensions.OpenWebif.Network import iNetwork
-# end
+from Components.Network import iNetwork
 
 import os
 import imp

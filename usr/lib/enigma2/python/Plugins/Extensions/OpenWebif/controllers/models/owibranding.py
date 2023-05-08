@@ -1,4 +1,3 @@
-#!/usr/bin/python
 # -*- coding: utf-8 -*-
 
 ##########################################################################
@@ -337,6 +336,9 @@ def getAllInfo():
 		elif procmodel == "hd60":
 			brand = "Mut@nt"
 			model = "HD60"
+		elif procmodel == "hd66se":
+			brand = "Mut@nt"
+			model = "HD66se"
 		elif procmodel == "multibox":
 			brand = "MaXytec"
 			model = "Multibox"
@@ -484,15 +486,19 @@ def getAllInfo():
 			brand = "Zgemma"
 			model = "H9 Twin SE"
 			grabpip = 1
-		elif procmodel == "h9se.s":
+		elif procmodel == "h9.s.se":
 			brand = "Zgemma"
-			model = "H9SE.S"
+			model = "H9.S SE"
 			grabpip = 1
-		elif procmodel == "h9se.2s":
+		elif procmodel == "h9se":
 			brand = "Zgemma"
-			model = "H9SE.2S"
+			model = "H9S SE"
 			grabpip = 1
-		elif procmodel == "h9se.2h":
+		elif procmodel == "h9.2s.se":
+			brand = "Zgemma"
+			model = "H9.2S SE"
+			grabpip = 1
+		elif procmodel == "h9.2h.se":
 			brand = "Zgemma"
 			model = "H9.2H SE"
 			grabpip = 1
@@ -512,10 +518,31 @@ def getAllInfo():
 			brand = "Zgemma"
 			model = "H11"
 			grabpip = 1
+		elif procmodel == "h11.s":
+			brand = "Zgemma"
+			model = "H11.S"
+			grabpip = 1
 		elif procmodel == "vs1500":
 			brand = "Vimastec"
 			model = "vs1500"
 			grabpip = 1
+		elif procmodel == "sfx6008":
+			brand = "Octagon"
+			sfx6008type = open("/proc/stb/info/type").read()
+			if sfx6008type.startswith("10"):
+				procmodel = "sfx6018"
+				model = "SFX6018 S2 IP"
+			else:  # sfx6008type.startswith("10")
+				wifi = None
+				if fileExists("/sys/devices/platform/soc/f9890000.ehci/usb1/1-1/idProduct"):
+					f = open("//sys/devices/platform/soc/f9890000.ehci/usb1/1-1/idProduct", 'r')
+					wifi = f.readline().strip().lower()
+					f.close()
+				if wifi == "f179":
+					procmodel = "sfx6008wl"
+					model = "SFX6008 WL"
+				else:
+					model = "SFX6008 IP"
 		elif procmodel == "sf8008m":
 			brand = "Octagon"
 			model = "SF8008 4K Mini"
@@ -534,6 +561,9 @@ def getAllInfo():
 					model = "SF8008 4K Single"
 			else:
 				model = procmodel.upper()
+		elif procmodel == "sx88v2":
+			brand = "Octagon"
+			model = "SX888 4K UHD"
 		elif procmodel == "e4hd":
 			brand = "Axas"
 			model = "E4HD"
@@ -541,7 +571,15 @@ def getAllInfo():
 			grabpip = 1
 		elif procmodel == "ustym4kpro":
 			brand = "uClan"
-			model = "Ustym 4K Pro"
+			ustymtype = open("/proc/stb/info/type").read()
+			if ustymtype.startswith("11"):
+				procmodel = "ustym4ktwin"
+				model = "uStym 4K Twin"
+			elif ustymtype.startswith("12"):
+				model = "Usytm 4K Pro"
+		elif procmodel == "ustym4ks2ottx":
+			brand = "uClan"
+			model = "Ustym 4K S2 OTT X"
 		elif procmodel == "pulse4k":
 			brand = "AB-COM"
 			model = "PULSe 4K"
@@ -600,7 +638,7 @@ def getAllInfo():
 		elif procmodel == "one":
 			model = "dreamone"
 		elif procmodel == "two":
-			model = "dreamtwo"
+			model = "Dreamtwo"
 		else:
 			model = procmodel
 
@@ -713,6 +751,8 @@ def getAllInfo():
 		remote = "hd2400"
 	elif procmodel == "hd60":
 		remote = "hd60"
+	elif procmodel == "hd66se":
+		remote = "hd66se"
 	elif procmodel in ("multibox", "multiboxse"):
 		remote = "multibox"
 	elif procmodel in ("spycat", "spycatmini", "spycatminiplus", "spycat4kmini"):
@@ -723,7 +763,7 @@ def getAllInfo():
 		remote = "xcombo"
 	elif procmodel == "dm8000" and orgdream:
 		remote = "dmm1"
-	elif procmodel in ("dm7080", "dm7020hd", "dm7020hdv2", "dm800sev2", "dm500hdv2", "dm520", "dm820", "dm900", "dm920", "dreamone", "dreamtwo"):
+	elif procmodel in ("dm7080", "dm7020hd", "dm7020hdv2", "dm800sev2", "dm500hdv2", "dm520", "dm820", "dm900", "dm920"):
 		remote = "dmm2"
 	elif procmodel == "wetekplay":
 		remote = procmodel
@@ -755,7 +795,7 @@ def getAllInfo():
 		remote = "dual"
 	elif procmodel in ("sh1", "lc"):
 		remote = "sh1"
-	elif procmodel in ("hzero", "h3", "h4", "h5", "h6", "h7", "h8", "h9", "i55plus", "h8.2h", "h9.s", "h9.t", "h9.2h", "h9.2s", "h9combo", "h9combose", "h9twin", "h9twinse", "h9se.s", "h9se.2s", "h9se.2h", "h10.t", "h10.2s", "h10.2h", "h11"):
+	elif procmodel in ("hzero", "h3", "h4", "h5", "h6", "h7", "h8", "h9", "i55plus", "h8.2h", "h9.s", "h9.t", "h9.2h", "h9.2s", "h9combo", "h9combose", "h9twin", "h9twinse", "h9.s.se", "h9se", "h9.2s.se", "h9.2h.se", "h10.t", "h10.2s", "h10.2h", "h11", "h11.s"):
 		remote = "h3"
 	elif procmodel == "i55":
 		remote = "i55"
@@ -765,6 +805,8 @@ def getAllInfo():
 		remote = "amiko1"
 	elif procmodel == "viperslim":
 		remote = "viperslim"
+	elif procmodel.startswith("sfx") or procmodel.startswith("sx"):
+		remote = "octagon3"
 	elif procmodel.startswith("sf"):
 		remote = "octagon"
 	elif procmodel in ("vs1100", "vs1500"):
@@ -773,6 +815,8 @@ def getAllInfo():
 		remote = "e4hd"
 	elif procmodel in ("ustym4kpro"):
 		remote = "uclan"
+	elif procmodel in ("ustym4ktwin", "ustym4ks2ottx"):
+		remote = "uclan3"
 	elif procmodel in ("pulse4k", "pulse4kmini"):
 		remote = "pulse4k"
 
@@ -785,7 +829,7 @@ def getAllInfo():
 			kernel = int(open("/proc/version", "r").read().split(' ', 4)[2].split('.', 2)[0])
 		except:  # nosec  # noqa: E722  # set a default
 			kernel = 2
-	except ValueError: # getKernelVersionString is not a number
+	except ValueError:  # getKernelVersionString is not a number
 		kernel = 2
 
 	distro = "unknown"

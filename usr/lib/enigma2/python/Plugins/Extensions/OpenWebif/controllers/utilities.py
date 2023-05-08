@@ -4,6 +4,10 @@ from __future__ import print_function
 import re
 import six
 import sys
+try:  # this is only for the testsuite
+	from Plugins.Extensions.OpenWebif.controllers.defaults import DEBUG_ENABLED
+except Exception:
+	DEBUG_ENABLED = False
 
 PY3 = sys.version_info[0] == 3
 
@@ -325,11 +329,11 @@ def getEventInfoProvider(moviedb):
 	extEventInfoProviders = {
 		'kinopoisk': {
 			'id': 'kinopoisk',
-			'name': 'KinoPoisk', # КиноПоиск
+			'name': 'KinoPoisk',  # КиноПоиск
 			'url': 'https://www.kinopoisk.ru/index.php?kp_query='
 		},
 		'csfd': {
-			'name': 'CSfd', # Česko-Slovenská filmová databáze
+			'name': 'CSfd',  # Česko-Slovenská filmová databáze
 			'url': 'https://www.csfd.cz/hledat/?q='
 		},
 		'tvguideuk': {
@@ -350,6 +354,21 @@ def getEventInfoProvider(moviedb):
 	except KeyError:
 		pass
 	return providerData
+
+
+def error(text, context=""):
+	if context:
+		print("[OpenWebif] [%s] Error: %s" % (context, text))
+	else:
+		print("[OpenWebif] Error: %s" % text)
+
+
+def debug(text, context=""):
+	if DEBUG_ENABLED:
+		if context:
+			print("[OpenWebif] [%s] %s" % (context, text))
+		else:
+			print("[OpenWebif] %s" % text)
 
 
 if __name__ == '__main__':

@@ -25,9 +25,9 @@ from Components.config import config
 from time import mktime, localtime
 import os
 
-from Plugins.Extensions.OpenWebif.controllers.models.services import getBouquets, getChannels, getSatellites, getProviders, getEventDesc, getChannelEpg, getSearchEpg, getCurrentFullInfo, getMultiEpg, getEvent
+from Plugins.Extensions.OpenWebif.controllers.models.services import getBouquets, getChannels, getAllServices, getSatellites, getProviders, getEventDesc, getSimilarEpg, getChannelEpg, getSearchEpg, getCurrentFullInfo, getMultiEpg, getEvent
 from Plugins.Extensions.OpenWebif.controllers.models.info import getInfo
-from Plugins.Extensions.OpenWebif.controllers.models.movies import getMovieList, getMovieSearchList
+from Plugins.Extensions.OpenWebif.controllers.models.movies import getMovieList, getMovieSearchList, getMovieInfo
 from Plugins.Extensions.OpenWebif.controllers.models.timers import getTimers
 from Plugins.Extensions.OpenWebif.controllers.models.config import getConfigs, getConfigsSections
 from Plugins.Extensions.OpenWebif.controllers.models.stream import GetSession
@@ -79,6 +79,7 @@ class AjaxController(BaseController):
 		sat = getSatellites(stype)
 		return {"satellites": sat['satellites'], "stype": stype}
 
+	# http://enigma2/ajax/channels?id=1%3A7%3A1%3A0%3A0%3A0%3A0%3A0%3A0%3A0%3AFROM%20BOUQUET%20%22userbouquet.favourites.tv%22%20ORDER%20BY%20bouquet&stype=tv
 	def P_channels(self, request):
 		stype = getUrlArg(request, "stype", "tv")
 		idbouquet = getUrlArg(request, "id", "ALL")
@@ -90,17 +91,21 @@ class AjaxController(BaseController):
 		channels['shownownextcolumns'] = config.OpenWebif.responsive_nownext_columns_enabled.value
 		return channels
 
+	# http://enigma2/ajax/eventdescription?idev=479&sref=1%3A0%3A19%3A1B1F%3A802%3A2%3A11A0000%3A0%3A0%3A0%3A
 	def P_eventdescription(self, request):
 		return getEventDesc(getUrlArg(request, "sref"), getUrlArg(request, "idev"))
 
+	# http://enigma2/ajax/event?idev=479&sref=1%3A0%3A19%3A1B1F%3A802%3A2%3A11A0000%3A0%3A0%3A0%3A
 	def P_event(self, request):
 		event = getEvent(getUrlArg(request, "sref"), getUrlArg(request, "idev"))
-		event['event']['recording_margin_before'] = config.recording.margin_before.value
-		event['event']['recording_margin_after'] = config.recording.margin_after.value
-		event['at'] = HASAUTOTIMER
-		event['transcoding'] = TRANSCODING
-		event['moviedb'] = config.OpenWebif.webcache.moviedb.value if config.OpenWebif.webcache.moviedb.value else EXT_EVENT_INFO_SOURCE
-		event['extEventInfoProvider'] = extEventInfoProvider = getEventInfoProvider(event['moviedb'])
+		if event:
+			# TODO: this shouldn't really be part of an event's data
+			event['event']['recording_margin_before'] = config.recording.margin_before.value
+			event['event']['recording_margin_after'] = config.recording.margin_after.value
+			event['at'] = HASAUTOTIMER
+			event['transcoding'] = TRANSCODING
+			event['moviedb'] = config.OpenWebif.webcache.moviedb.value if config.OpenWebif.webcache.moviedb.value else EXT_EVENT_INFO_SOURCE
+			event['extEventInfoProvider'] = extEventInfoProvider = getEventInfoProvider(event['moviedb'])
 		return event
 
 	def P_about(self, request):
@@ -120,15 +125,20 @@ class AjaxController(BaseController):
 			info["boximage"] = "unknown.png"
 		return info
 
+	# http://enigma2/ajax/epgpop?sstr=test&bouquetsonly=1
 	def P_epgpop(self, request):
 		events = []
 		timers = []
 		sref = getUrlArg(request, "sref")
+		eventId = getUrlArg(request, "eventid")
 		sstr = getUrlArg(request, "sstr")
-		if sref != None:
-			ev = getChannelEpg(sref)
+		if sref is not None:
+			if eventId is not None:
+				ev = getSimilarEpg(sref, eventId)
+			else:
+				ev = getChannelEpg(sref)
 			events = ev["events"]
-		elif sstr != None:
+		elif sstr is not None:
 			fulldesc = False
 			if getUrlArg(request, "full") != None:
 				fulldesc = True
@@ -151,6 +161,7 @@ class AjaxController(BaseController):
 
 		return {"theme": theme, "events": events, "timers": timers, "at": at, "moviedb": moviedb, "extEventInfoProvider": extEventInfoProvider}
 
+	# http://enigma2/ajax/epgdialog?sstr=test&bouquetsonly=1
 	def P_epgdialog(self, request):
 		return self.P_epgpop(request)
 
@@ -169,7 +180,12 @@ class AjaxController(BaseController):
 			box['brand'] = "techomate"
 		elif fileExists("/proc/stb/info/azmodel"):
 			box['brand'] = "azbox"
-		return {"box": box}
+
+		return {"box": box,
+				"high_resolution": config.OpenWebif.webcache.screenshot_high_resolution.value,
+				"refresh_auto": config.OpenWebif.webcache.screenshot_refresh_auto.value,
+				"refresh_time": config.OpenWebif.webcache.screenshot_refresh_time.value
+				}
 
 	def P_movies(self, request):
 		movies = getMovieList(request.args)
@@ -231,11 +247,13 @@ class AjaxController(BaseController):
 		timers['sort'] = sorttype
 		return timers
 
+	# http://enigma2/ajax/tvradio
+	# (`classic` interface only)
 	def P_tvradio(self, request):
 		epgmode = getUrlArg(request, "epgmode", "tv")
 		if epgmode not in ["tv", "radio"]:
 			epgmode = "tv"
-		return{"epgmode": epgmode}
+		return {"epgmode": epgmode}
 
 	def P_config(self, request):
 		section = getUrlArg(request, "section", "usage")
@@ -268,12 +286,15 @@ class AjaxController(BaseController):
 		ret['screenshotchannelname'] = config.OpenWebif.webcache.screenshotchannelname.value
 		ret['showallpackages'] = config.OpenWebif.webcache.showallpackages.value
 		ret['allowipkupload'] = config.OpenWebif.allow_upload_ipk.value
+		ret['smallremotes'] = [(x, _('%s Style') % x.capitalize()) for x in config.OpenWebif.webcache.smallremote.choices]
+		ret['smallremote'] = config.OpenWebif.webcache.smallremote.value
 		loc = getLocations()
 		ret['locations'] = loc['locations']
 		if os.path.exists(VIEWS_PATH + "/responsive"):
 			ret['responsivedesign'] = config.OpenWebif.responsive_enabled.value
 		return ret
 
+	# http://enigma2/ajax/multiepg
 	def P_multiepg(self, request):
 		epgmode = getUrlArg(request, "epgmode", "tv")
 		if epgmode not in ["tv", "radio"]:
@@ -301,7 +322,7 @@ class AjaxController(BaseController):
 				day = int(_day)
 				if day > 0 or wadd > 0:
 					now = localtime()
-					begintime = mktime((now.tm_year, now.tm_mon, now.tm_mday + day + wadd, 0, 0, 0, -1, -1, -1))
+					begintime = int(mktime((now.tm_year, now.tm_mon, now.tm_mday + day + wadd, 0, 0, 0, -1, -1, -1)))
 			except ValueError:
 				pass
 		mode = 1
@@ -364,3 +385,37 @@ class AjaxController(BaseController):
 			except Exception:
 				transcoder_port = 0
 		return {"transcoder_port": transcoder_port, "vxgenabled": vxgenabled, "auth": auth, "streaming_port": streaming_port}
+
+	def P_editmovie(self, request):
+		sref = getUrlArg(request, "sRef")
+		title = ""
+		description = ""
+		tags = ""
+		resulttext = ""
+		result = False
+		if sref:
+			mi = getMovieInfo(sref, NewFormat=True)
+			result = mi["result"]
+			if result:
+				title = mi["title"]
+				if title:
+					description = mi["description"]
+					tags = mi["tags"]
+				else:
+					result = False
+					resulttext = "meta file not found"
+			else:
+				resulttext = mi["resulttext"]
+		return {"title": title, "description": description, "sref": sref, "result": result, "tags": tags, "resulttext": resulttext}
+
+	def P_epgplayground(self, request):
+		TV = 'tv'
+		RADIO = 'radio'
+
+		ret = {
+			'tvBouquets': getBouquets(TV),
+			'tvChannels': getAllServices(TV),
+			'radioBouquets': getBouquets(RADIO),
+			'radioChannels': getAllServices(RADIO),
+		}
+		return {'data': ret}

@@ -4,7 +4,7 @@
 ##########################################################################
 # OpenWebif: WebController
 ##########################################################################
-# Copyright (C) 2011 - 2020 E2OpenPlugins
+# Copyright (C) 2011 - 2022 E2OpenPlugins
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by
@@ -22,9 +22,13 @@
 ##########################################################################
 
 from __future__ import absolute_import, division
+from re import match
+from six import ensure_str, ensure_binary
 from Components.config import config as comp_config
+from Screens.InfoBar import InfoBar
+
 from .models.info import getInfo, getCurrentTime, getStatusInfo, getFrontendStatus, testPipStatus
-from .models.services import getCurrentService, getBouquets, getServices, getSubServices, getSatellites, getBouquetEpg, getBouquetNowNextEpg, getServicesNowNextEpg, getSearchEpg, getChannelEpg, getNowNextEpg, getSearchSimilarEpg, getAllServices, getPlayableServices, getPlayableService, getParentalControlList, getEvent, loadEpg, saveEpg, getServiceRef, getPicon
+from .models.services import getCurrentService, getBouquets, getServices, getSubServices, getSatellites, getBouquetEpg, getBouquetNowNextEpg, getMultiChannelNowNextEpg, getSearchEpg, getSimilarEpg, getChannelEpg, getNowNextEpg, getAllServices, getPlayableServices, getPlayableService, getParentalControlList, getEvent, getServiceRef, getPicon
 from .models.volume import getVolumeStatus, setVolumeUp, setVolumeDown, setVolumeMute, setVolume
 from .models.audiotrack import getAudioTracks, setAudioTrack
 from .models.control import zapService, remoteControl, setPowerState, getStandbyState
@@ -37,15 +41,13 @@ from .models.stream import getStream, getTS, getStreamSubservices, GetSession
 from .models.servicelist import reloadServicesLists
 from .models.mediaplayer import mediaPlayerAdd, mediaPlayerRemove, mediaPlayerPlay, mediaPlayerCommand, mediaPlayerCurrent, mediaPlayerList, mediaPlayerLoad, mediaPlayerSave, mediaPlayerFindFile
 from .models.plugins import reloadPlugins
-from Screens.InfoBar import InfoBar
 
 from .i18n import _
 from .base import BaseController
 from .stream import StreamController
 from .utilities import getUrlArg
 from .defaults import PICON_PATH
-import re
-import six
+from .epg import EPG
 
 
 def whoami(request):
@@ -55,7 +57,7 @@ def whoami(request):
 		port = comp_config.OpenWebif.https_port.value
 		proto = 'https'
 	ourhost = request.getHeader('host')
-	m = re.match('.+\:(\d+)$', ourhost)
+	m = match('.+\:(\d+)$', ourhost)
 	if m is not None:
 		port = m.group(1)
 	return {'proto': proto, 'port': port}
@@ -78,7 +80,7 @@ class WebController(BaseController):
 
 	def testMandatoryArguments(self, request, keys):
 		for key in keys:
-			k = six.ensure_binary(key)
+			k = ensure_binary(key)
 			if k not in list(request.args.keys()):
 				return {
 					"result": False,
@@ -112,7 +114,7 @@ class WebController(BaseController):
 			InfoBar.instance.startTimeshift()
 		except Exception:  # nosec # noqa: E722
 			success = False
-		return self.P_tstate(request, success)
+		return self.P_tsstate(request, success)
 
 	def P_tsstop(self, request):
 		"""
@@ -133,19 +135,24 @@ class WebController(BaseController):
 		"""
 		success = True
 		oldcheck = False
+		configItem = None
+		if hasattr(comp_config.timeshift, "check"):
+			configItem = comp_config.timeshift.check
+		elif hasattr(comp_config.usage, "check_timeshift"):
+			configItem = comp_config.usage.check_timeshift
 		try:
-			if comp_config.usage.check_timeshift.value:
-				oldcheck = comp_config.usage.check_timeshift.value
+			if configItem and configItem.value:
+				oldcheck = configItem.value
 				# don't ask but also don't save
-				comp_config.usage.check_timeshift.value = False
-				comp_config.usage.check_timeshift.save()
+				configItem.value = False
+				configItem.save()
 			InfoBar.instance.stopTimeshift()
 		except Exception:  # nosec # noqa: E722
 			success = False
-		if comp_config.usage.check_timeshift.value:
-			comp_config.usage.check_timeshift.value = oldcheck
-			comp_config.usage.check_timeshift.save()
-		return self.P_tstate(request, success)
+		if configItem and configItem.value:
+			configItem.value = oldcheck
+			configItem.save()
+		return self.P_tsstate(request, success)
 
 	def P_tsstate(self, request, success=True):
 		"""
@@ -327,6 +334,11 @@ class WebController(BaseController):
 		Returns:
 			HTTP response with headers
 		"""
+
+		text = getUrlArg(request, "text", "")
+		if text:
+			return remoteControl(0, "text", text)  # text input do not need type and command
+
 		res = self.testMandatoryArguments(request, ["command"])
 		if res:
 			return res
@@ -467,13 +479,18 @@ class WebController(BaseController):
 		type = "tv"
 		if b"type" in list(request.args.keys()):
 			type = "radio"
-		noiptv = False
-		if b"noiptv" in list(request.args.keys()):
-			noiptv = True
-		nolastscanned = False
-		if b"nolastscanned" in list(request.args.keys()):
-			nolastscanned = True
-		bouquets = getAllServices(type, noiptv, nolastscanned)
+
+		noiptv = True if getUrlArg(request, "noiptv", "0") in ("1", "true") else False
+
+		nolastscanned = True if getUrlArg(request, "nolastscanned", "0") in ("1", "true") else False
+
+		removeNameFromsref = True if getUrlArg(request, "removenamefromsref", "0") in ("1", "true") else False
+
+		showAll = False if getUrlArg(request, "showall", "1") in ("0", "false") else True
+
+		showProviders = True if getUrlArg(request, "showproviders", "0") in ("1", "true") else False
+
+		bouquets = getAllServices(type=type, noiptv=noiptv, nolastscanned=nolastscanned, removeNameFromsref=removeNameFromsref, showAll=showAll, showProviders=showProviders)
 		if b"renameserviceforxmbc" in list(request.args.keys()):
 			for bouquet in bouquets["services"]:
 				for service in bouquet["subservices"]:
@@ -497,10 +514,14 @@ class WebController(BaseController):
 			HTTP response with headers
 		"""
 		sRef = getUrlArg(request, "sRef", "")
-		hidden = getUrlArg(request, "hidden") == "1"
-		provider = getUrlArg(request, "provider") == "1"
-		picon = getUrlArg(request, "picon") == "1"
-		return getServices(sRef=sRef, showAll=True, showHidden=hidden, provider=provider, picon=picon)
+		hidden = True if getUrlArg(request, "hidden", "0") in ("1", "true") else False
+		showProviders = True if getUrlArg(request, "showproviders", "0") in ("1", "true") else False
+		# FALLBACK for old 3rd party tools
+		if getUrlArg(request, "provider") == "1":
+			showProviders = True
+		picon = True if getUrlArg(request, "picon", "0") in ("1", "true") else False
+		removeNameFromsref = True if getUrlArg(request, "removenamefromsref", "0") in ("1", "true") else False
+		return getServices(sRef=sRef, showAll=True, showHidden=hidden, showProviders=showProviders, picon=picon, removeNameFromsref=removeNameFromsref)
 
 	def P_servicesxspf(self, request):
 		"""
@@ -916,7 +937,8 @@ class WebController(BaseController):
 			_deltag = getUrlArg(request, "deltag")
 			_title = getUrlArg(request, "title")
 			_cuts = getUrlArg(request, "cuts")
-			return getMovieInfo(_sRef, _addtag, _deltag, _title, _cuts, True)
+			_desc = getUrlArg(request, "desc")
+			return getMovieInfo(_sRef, _addtag, _deltag, _title, _cuts, _desc, True)
 		else:
 			return getMovieInfo()
 
@@ -1019,6 +1041,7 @@ class WebController(BaseController):
 		"""
 		ret = getTimers(self.session)
 		ret["locations"] = comp_config.movielist.videodirs.value
+		ret["default"] = comp_config.usage.default_path.value
 		return ret
 
 	def _AddEditTimer(self, request, mode):
@@ -1058,11 +1081,9 @@ class WebController(BaseController):
 		elif b"eit" in list(request.args.keys()) and isinstance(request.args[b"eit"][0], int):
 			eit = int(request.args[b"eit"][0])
 		else:
-			# TODO : move this code to timers.py
-			from enigma import eEPGCache, eServiceReference
 			queryTime = int(request.args[b"begin"][0]) + (int(request.args[b"end"][0]) - int(request.args[b"begin"][0])) // 2
-			event = eEPGCache.getInstance().lookupEventTime(eServiceReference(sRef), queryTime)
-			eventid = event and event.getEventId()
+			epg = EPG()
+			eventid = epg.getEventIdByTime(sRef, queryTime)
 			if eventid is not None:
 				eit = int(eventid)
 
@@ -1412,6 +1433,9 @@ class WebController(BaseController):
 			"firstpublic": firstpublic
 		}
 
+	# http://enigma2/api/epgbouquet?bRef=1%3A7%3A1%3A0%3A0%3A0%3A0%3A0%3A0%3A0%3A%20FROM%20BOUQUET%20%22userbouquet.favourites.tv%22%20ORDER%20BY%20bouquet
+	# http://enigma2/web/epgbouquet?bRef=1%3A7%3A1%3A0%3A0%3A0%3A0%3A0%3A0%3A0%3A%20FROM%20BOUQUET%20%22userbouquet.favourites.tv%22%20ORDER%20BY%20bouquet
+	# TODO: this is _woefully_ inefficient
 	def P_epgbouquet(self, request):
 		res = self.testMandatoryArguments(request, ["bRef"])
 		if res:
@@ -1424,7 +1448,8 @@ class WebController(BaseController):
 			except ValueError:
 				pass
 
-		endtime = None
+		# TODO: test -1 actually works
+		endtime = -1
 		if b"endTime" in list(request.args.keys()):
 			try:
 				endtime = int(request.args[b"endTime"][0])
@@ -1433,6 +1458,9 @@ class WebController(BaseController):
 
 		return getBouquetEpg(getUrlArg(request, "bRef"), begintime, endtime, self.isJson)
 
+	# http://enigma2/api/epgmulti?bRef=1%3A7%3A1%3A0%3A0%3A0%3A0%3A0%3A0%3A0%3A%20FROM%20BOUQUET%20"userbouquet.favourites.tv"%20ORDER%20BY%20bouquet
+	# http://enigma2/web/epgmulti?bRef=1%3A7%3A1%3A0%3A0%3A0%3A0%3A0%3A0%3A0%3A%20FROM%20BOUQUET%20"userbouquet.favourites.tv"%20ORDER%20BY%20bouquet
+	# TODO: check if originally dupe of `P_epgbouquet`
 	def P_epgmulti(self, request):
 		"""
 		Request handler for the `epgmulti` endpoint.
@@ -1457,7 +1485,8 @@ class WebController(BaseController):
 			except ValueError:
 				pass
 
-		endtime = None
+		# TODO: test -1 actually works
+		endtime = -1
 		if b"endTime" in list(request.args.keys()):
 			try:
 				endtime = int(request.args[b"endTime"][0])
@@ -1490,34 +1519,53 @@ class WebController(BaseController):
 		ret["offset"] = getUtcOffset()
 		return ret
 
+	# http://enigma2/api/epgnow?bRef=1%3A7%3A1%3A0%3A0%3A0%3A0%3A0%3A0%3A0%3A%20FROM%20BOUQUET%20"userbouquet.favourites.tv"%20ORDER%20BY%20bouquet
+	# http://enigma2/web/epgnow?bRef=1%3A7%3A1%3A0%3A0%3A0%3A0%3A0%3A0%3A0%3A%20FROM%20BOUQUET%20"userbouquet.favourites.tv"%20ORDER%20BY%20bouquet
 	def P_epgnow(self, request):
 		res = self.testMandatoryArguments(request, ["bRef"])
 		if res:
 			return res
-		return getBouquetNowNextEpg(getUrlArg(request, "bRef"), 0, self.isJson)
+		bqRef = getUrlArg(request, "bRef")
 
+		return getBouquetNowNextEpg(bqRef, EPG.NOW, self.isJson)
+
+	# http://enigma2/api/epgnext?bRef=1%3A7%3A1%3A0%3A0%3A0%3A0%3A0%3A0%3A0%3A%20FROM%20BOUQUET%20"userbouquet.favourites.tv"%20ORDER%20BY%20bouquet
+	# http://enigma2/web/epgnext?bRef=1%3A7%3A1%3A0%3A0%3A0%3A0%3A0%3A0%3A0%3A%20FROM%20BOUQUET%20"userbouquet.favourites.tv"%20ORDER%20BY%20bouquet
 	def P_epgnext(self, request):
 		res = self.testMandatoryArguments(request, ["bRef"])
 		if res:
 			return res
-		return getBouquetNowNextEpg(getUrlArg(request, "bRef"), 1, self.isJson)
+		bqRef = getUrlArg(request, "bRef")
 
+		# from Components.Sources.EventInfo import EventInfo
+		# print(EventInfo(self.session.nav, EventInfo.NEXT).getEvent().getBeginTime())
+		return getBouquetNowNextEpg(bqRef, EPG.NEXT, self.isJson)
+
+	# http://enigma2/api/epgnownext?bRef=1%3A7%3A1%3A0%3A0%3A0%3A0%3A0%3A0%3A0%3A%20FROM%20BOUQUET%20"userbouquet.favourites.tv"%20ORDER%20BY%20bouquet
+	# http://enigma2/web/epgnownext?bRef=1%3A7%3A1%3A0%3A0%3A0%3A0%3A0%3A0%3A0%3A%20FROM%20BOUQUET%20"userbouquet.favourites.tv"%20ORDER%20BY%20bouquet
+	# TODO: fix missing now or next
 	def P_epgnownext(self, request):
 		res = self.testMandatoryArguments(request, ["bRef"])
 		if res:
 			return res
+		bqRef = getUrlArg(request, "bRef")
+		ret = getBouquetNowNextEpg(bqRef, EPG.NOW_NEXT, self.isJson)
 		info = getCurrentService(self.session)
-		ret = getBouquetNowNextEpg(getUrlArg(request, "bRef"), -1, self.isJson)
 		ret["info"] = info
 		return ret
 
-	def P_epgservicelistnownext(self, request):
-		res = self.testMandatoryArguments(request, ["sList"])
+	def P_epgmultichannelnownext(self, request):
+		res = self.testMandatoryArguments(request, ["sRefs"])
 		if res:
 			return res
-		ret = getServicesNowNextEpg(getUrlArg(request, "sList"), self.isJson)
-		return ret
 
+		sRefs = getUrlArg(request, "sRefs").split(",")
+		ret = getMultiChannelNowNextEpg(sRefs, self.isJson)
+
+		return str(ret)  # fixed Jun'22 (seems to have been broken for quite a while)
+
+	# http://enigma2/api/epgsearch?search=test
+	# http://enigma2/web/epgsearch?search=test
 	def P_epgsearch(self, request):
 		"""
 		EPG event search and lookup handler.
@@ -1568,6 +1616,8 @@ class WebController(BaseController):
 				pass
 			return getEvent(sRef, item_id, self.isJson)
 
+	# http://enigma2/api/epgsearchrss?search=test
+	# http://enigma2/web/epgsearchrss?search=test
 	def P_epgsearchrss(self, request):
 		res = self.testMandatoryArguments(request, ["search"])
 		if res:
@@ -1580,6 +1630,8 @@ class WebController(BaseController):
 		ret["description"] = "%d result for '%s'" % (len(ret["events"]), search)
 		return ret
 
+	# http://enigma2/api/epgservice?sRef=1%3A0%3A19%3A1B1F%3A802%3A2%3A11A0000%3A0%3A0%3A0%3A
+	# http://enigma2/web/epgservice?sRef=1%3A0%3A19%3A1B1F%3A802%3A2%3A11A0000%3A0%3A0%3A0%3A
 	def P_epgservice(self, request):
 		res = self.testMandatoryArguments(request, ["sRef"])
 		if res:
@@ -1600,18 +1652,24 @@ class WebController(BaseController):
 				pass
 		return getChannelEpg(getUrlArg(request, "sRef"), begintime, endtime, self.isJson)
 
+	# http://enigma2/api/epgservicenow?sRef=1%3A0%3A19%3A1B1F%3A802%3A2%3A11A0000%3A0%3A0%3A0%3A
+	# http://enigma2/web/epgservicenow?sRef=1%3A0%3A19%3A1B1F%3A802%3A2%3A11A0000%3A0%3A0%3A0%3A
 	def P_epgservicenow(self, request):
 		res = self.testMandatoryArguments(request, ["sRef"])
 		if res:
 			return res
-		return getNowNextEpg(getUrlArg(request, "sRef"), 0, self.isJson)
+		return getNowNextEpg(getUrlArg(request, "sRef"), EPG.NOW, self.isJson)
 
+	# http://enigma2/api/epgservicenext?sRef=1%3A0%3A19%3A1B1F%3A802%3A2%3A11A0000%3A0%3A0%3A0%3A
+	# http://enigma2/web/epgservicenext?sRef=1%3A0%3A19%3A1B1F%3A802%3A2%3A11A0000%3A0%3A0%3A0%3A
 	def P_epgservicenext(self, request):
 		res = self.testMandatoryArguments(request, ["sRef"])
 		if res:
 			return res
-		return getNowNextEpg(getUrlArg(request, "sRef"), 1, self.isJson)
+		return getNowNextEpg(getUrlArg(request, "sRef"), EPG.NEXT, self.isJson)
 
+	# http://enigma2/api/epgsimilar?sRef=1%3A0%3A19%3A1B1F%3A802%3A2%3A11A0000%3A0%3A0%3A0%3A&eventid=32645
+	# http://enigma2/web/epgsimilar?sRef=1%3A0%3A19%3A1B1F%3A802%3A2%3A11A0000%3A0%3A0%3A0%3A&eventid=32645
 	def P_epgsimilar(self, request):
 		res = self.testMandatoryArguments(request, ["sRef", "eventid"])
 		if res:
@@ -1624,18 +1682,26 @@ class WebController(BaseController):
 				"result": False,
 				"message": "The parameter 'eventid' must be a number"
 			}
+		return getSimilarEpg(getUrlArg(request, "sRef"), eventid, self.isJson)['events']
 
-		return getSearchSimilarEpg(getUrlArg(request, "sRef"), eventid, self.isJson)
-
+	# http://enigma2/api/event?idev=32695&sref=1%3A0%3A19%3A1B1F%3A802%3A2%3A11A0000%3A0%3A0%3A0%3A
+	# (/web/event returns a 404 in both `classic` and `modern` interfaces
 	def P_event(self, request):
 		sRef = getUrlArg(request, "sRef")
-		if sRef == None:
+		if sRef is None:
 			sRef = getUrlArg(request, "sref")
-		event = getEvent(sRef, request.args[b"idev"][0], self.isJson)
-		event['event']['recording_margin_before'] = comp_config.recording.margin_before.value
-		event['event']['recording_margin_after'] = comp_config.recording.margin_after.value
-		return event
 
+		event = getEvent(sRef, request.args[b"idev"][0], self.isJson)
+		if event is not None:
+			# TODO: this shouldn't really be part of an event's data
+			event['event']['recording_margin_before'] = comp_config.recording.margin_before.value
+			event['event']['recording_margin_after'] = comp_config.recording.margin_after.value
+			return event
+		else:
+			return None
+
+	# http://enigma2/api/getcurrent
+	# http://enigma2/web/getcurrent
 	def P_getcurrent(self, request):
 		"""
 		Request handler for the `getcurrent` endpoint.
@@ -1654,12 +1720,12 @@ class WebController(BaseController):
 
 		"""
 		info = getCurrentService(self.session)
-		now = getNowNextEpg(info["ref"], 0, self.isJson)
-		if len(now["events"]) > 0:
-			now = now["events"][0]
-			now["provider"] = info["provider"]
+		eventnow = getNowNextEpg(info["ref"], EPG.NOW, self.isJson)
+		if len(eventnow["events"]) > 0:
+			eventnow = eventnow["events"][0]
+			eventnow["provider"] = info["provider"]
 		else:
-			now = {
+			eventnow = {
 				"id": 0,
 				"begin_timestamp": 0,
 				"duration_sec": 0,
@@ -1674,12 +1740,12 @@ class WebController(BaseController):
 				"genre": "",
 				"genreid": 0
 			}
-		next = getNowNextEpg(info["ref"], 1, self.isJson)
-		if len(next["events"]) > 0:
-			next = next["events"][0]
-			next["provider"] = info["provider"]
+		eventnext = getNowNextEpg(info["ref"], EPG.NEXT, self.isJson)
+		if len(eventnext["events"]) > 0:
+			eventnext = eventnext["events"][0]
+			eventnext["provider"] = info["provider"]
 		else:
-			next = {
+			eventnext = {
 				"id": 0,
 				"begin_timestamp": 0,
 				"duration_sec": 0,
@@ -1695,7 +1761,7 @@ class WebController(BaseController):
 				"genreid": 0
 			}
 		# replace EPG NOW with Movie info
-		mnow = now
+		mnow = eventnow
 		if mnow["sref"].startswith('1:0:0:0:0:0:0:0:0:0:/') or mnow["sref"].startswith('4097:0:0:0:0:0:0:0:0:0:/'):
 			try:
 				service = self.session.nav.getCurrentService()
@@ -1710,7 +1776,7 @@ class WebController(BaseController):
 					mnow["remaining"] = movie.getDuration()
 					mnow["id"] = movie.getEventId()
 			except Exception:  # nosec # noqa: E722
-				mnow = now
+				mnow = eventnow
 		elif mnow["sref"] == '':
 			serviceref = self.session.nav.getCurrentlyPlayingServiceReference()
 			if serviceref is not None:
@@ -1730,7 +1796,7 @@ class WebController(BaseController):
 		return {
 			"info": info,
 			"now": mnow,
-			"next": next
+			"next": eventnext
 		}
 
 	def P_getpid(self, request):
@@ -2150,7 +2216,12 @@ class WebController(BaseController):
 		Returns:
 			HTTP response with headers
 		"""
-		return saveEpg()
+		EPG().save()
+
+		return {
+			"result": True,
+			"message": "EPG data saved"
+		}
 
 	def P_loadepg(self, request):
 		"""
@@ -2165,7 +2236,12 @@ class WebController(BaseController):
 		Returns:
 			HTTP response with headers
 		"""
-		return loadEpg()
+		EPG().load()
+
+		return {
+			"result": True,
+			"message": "EPG data loaded"
+		}
 
 	def P_getsubtitles(self, request):
 		"""
@@ -2214,6 +2290,8 @@ class WebController(BaseController):
 		moviedb = comp_config.OpenWebif.webcache.moviedb.value if comp_config.OpenWebif.webcache.moviedb.value else 'IMDb'
 		ret['moviedb'] = moviedb
 		ret['showchanneldetails'] = comp_config.OpenWebif.webcache.showchanneldetails.value
+		smallremote = comp_config.OpenWebif.webcache.smallremote.value if comp_config.OpenWebif.webcache.smallremote.value else 'new'
+		ret['smallremote'] = smallremote
 		return ret
 
 	def P_config(self, request):
@@ -2230,7 +2308,7 @@ class WebController(BaseController):
 			return setcs
 		else:
 			try:
-				rp = six.ensure_str(request.path)
+				rp = ensure_str(request.path)
 				sect = rp.split('/')
 				if len(sect) == 4:
 					cfgs = getConfigs(sect[3])
@@ -2305,6 +2383,12 @@ class WebController(BaseController):
 			val = (getUrlArg(request, "zapstream") == 'true')
 			comp_config.OpenWebif.webcache.zapstream.value = val
 			comp_config.OpenWebif.webcache.zapstream.save()
+		elif b"smallremote" in list(request.args.keys()):
+			try:
+				comp_config.OpenWebif.webcache.smallremote.value = getUrlArg(request, "smallremote")
+				comp_config.OpenWebif.webcache.smallremote.save()
+			except Exception:
+				pass
 		elif b"theme" in list(request.args.keys()):
 			try:
 				comp_config.OpenWebif.webcache.theme.value = getUrlArg(request, "theme")
@@ -2315,6 +2399,20 @@ class WebController(BaseController):
 			try:
 				comp_config.OpenWebif.webcache.mepgmode.value = int(request.args[b"mepgmode"][0])
 				comp_config.OpenWebif.webcache.mepgmode.save()
+			except ValueError:
+				pass
+		elif b"screenshot_high_resolution" in list(request.args.keys()):
+			val = (getUrlArg(request, "screenshot_high_resolution") == 'true')
+			comp_config.OpenWebif.webcache.screenshot_high_resolution.value = val
+			comp_config.OpenWebif.webcache.screenshot_high_resolution.save()
+		elif b"screenshot_refresh_auto" in list(request.args.keys()):
+			val = (getUrlArg(request, "screenshot_refresh_auto") == 'true')
+			comp_config.OpenWebif.webcache.screenshot_refresh_auto.value = val
+			comp_config.OpenWebif.webcache.screenshot_refresh_auto.save()
+		elif b"screenshot_refresh_time" in list(request.args.keys()):
+			try:
+				comp_config.OpenWebif.webcache.screenshot_refresh_time.value = int(request.args[b"screenshot_refresh_time"][0])
+				comp_config.OpenWebif.webcache.screenshot_refresh_time.save()
 			except ValueError:
 				pass
 		else:

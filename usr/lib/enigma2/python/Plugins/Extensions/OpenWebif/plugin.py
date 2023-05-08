@@ -1,4 +1,3 @@
-#!/usr/bin/python
 # -*- coding: utf-8 -*-
 
 ##########################################################################
@@ -29,10 +28,10 @@ from Plugins.Plugin import PluginDescriptor
 from Components.ActionMap import ActionMap
 from Components.Label import Label
 from Components.ConfigList import ConfigListScreen
-from Components.config import config, getConfigListEntry, ConfigSubsection, ConfigInteger, ConfigYesNo, ConfigText, ConfigSelection, configfile
+from Components.config import config, ConfigSubsection, ConfigInteger, ConfigYesNo, ConfigText, ConfigSelection, configfile
 from enigma import getDesktop
 from Plugins.Extensions.OpenWebif.controllers.models.info import getInfo
-from Plugins.Extensions.OpenWebif.controllers.defaults import EXT_EVENT_INFO_SOURCE, getIP
+from Plugins.Extensions.OpenWebif.controllers.defaults import EXT_EVENT_INFO_SOURCE, getIP, setDebugEnabled
 from Plugins.Extensions.OpenWebif.httpserver import HttpdStart, HttpdStop, HttpdRestart
 from Plugins.Extensions.OpenWebif.controllers.i18n import _
 
@@ -67,6 +66,10 @@ config.OpenWebif.webcache.showchanneldetails = ConfigYesNo(default=False)
 config.OpenWebif.webcache.showiptvchannelsinselection = ConfigYesNo(default=True)
 config.OpenWebif.webcache.screenshotchannelname = ConfigYesNo(default=False)
 config.OpenWebif.webcache.showallpackages = ConfigYesNo(default=False)
+config.OpenWebif.webcache.smallremote = ConfigSelection(default='new', choices=['new', 'old', 'ims'])
+config.OpenWebif.webcache.screenshot_high_resolution = ConfigYesNo(default=True)
+config.OpenWebif.webcache.screenshot_refresh_auto = ConfigYesNo(default=False)
+config.OpenWebif.webcache.screenshot_refresh_time = ConfigInteger(default=30)
 
 # HTTPS
 config.OpenWebif.https_enabled = ConfigYesNo(default=False)
@@ -99,35 +102,26 @@ config.OpenWebif.epg_encoding = ConfigSelection(default='utf-8', choices=['utf-8
 
 config.OpenWebif.displayTracebacks = ConfigYesNo(default=False)
 config.OpenWebif.playiptvdirect = ConfigYesNo(default=True)
+config.OpenWebif.verbose_debug_enabled = ConfigYesNo(default=False)
+
+setDebugEnabled(config.OpenWebif.verbose_debug_enabled.value)
 
 from Plugins.Extensions.OpenWebif import vtiaddon
 vtiaddon.expandConfig()
 
 imagedistro = getInfo()['imagedistro']
 
-screenwidth = getDesktop(0).size().width()
 
 class OpenWebifConfig(Screen, ConfigListScreen):
-	if screenwidth and screenwidth == 1920:
-		skin = """
-		<screen position="center,center" size="1062,520" title="OpenWebif Configuration">
-			<widget name="lab1" position="10,15" halign="center" size="1030,70" zPosition="1" font="Regular;24" valign="top" transparent="1" />
-			<widget name="config" position="10,95" size="1039,368" scrollbarMode="showOnDemand" />
-			<ePixmap position="250,476" size="140,40" pixmap="skin_default/buttons/red.png" alphatest="on" />
-			<widget name="key_red" position="250,476" zPosition="1" size="140,40" font="Regular;30" halign="center" valign="center" backgroundColor="red" transparent="1" />
-			<ePixmap position="620,476" size="140,40" pixmap="skin_default/buttons/green.png" alphatest="on" zPosition="1" />
-			<widget name="key_green" position="620,476" zPosition="2" size="140,40" font="Regular;30" halign="center" valign="center" backgroundColor="green" transparent="1" />
-		</screen>"""
-	else:
-		skin = """
-		<screen position="center,center" size="700,340" title="OpenWebif Configuration">
-			<widget name="lab1" position="10,30" halign="center" size="680,60" zPosition="1" font="Regular;24" valign="top" transparent="1" />
-			<widget name="config" position="10,100" size="680,180" scrollbarMode="showOnDemand" />
-			<ePixmap position="140,290" size="140,40" pixmap="skin_default/buttons/red.png" alphatest="on" />
-			<widget name="key_red" position="140,290" zPosition="1" size="140,40" font="Regular;20" halign="center" valign="center" backgroundColor="red" transparent="1" />
-			<ePixmap position="420,290" size="140,40" pixmap="skin_default/buttons/green.png" alphatest="on" zPosition="1" />
-			<widget name="key_green" position="420,290" zPosition="2" size="140,40" font="Regular;20" halign="center" valign="center" backgroundColor="green" transparent="1" />
-		</screen>"""
+	skin = """
+	<screen position="center,center" size="700,340" title="OpenWebif Configuration">
+		<widget name="lab1" position="10,30" halign="center" size="680,60" zPosition="1" font="Regular;24" valign="top" transparent="1" />
+		<widget name="config" position="10,100" size="680,180" scrollbarMode="showOnDemand" />
+		<ePixmap position="140,290" size="140,40" pixmap="skin_default/buttons/red.png" alphatest="on" />
+		<widget name="key_red" position="140,290" zPosition="1" size="140,40" font="Regular;20" halign="center" valign="center" backgroundColor="red" transparent="1" />
+		<ePixmap position="420,290" size="140,40" pixmap="skin_default/buttons/green.png" alphatest="on" zPosition="1" />
+		<widget name="key_green" position="420,290" zPosition="2" size="140,40" font="Regular;20" halign="center" valign="center" backgroundColor="green" transparent="1" />
+	</screen>"""
 
 	def __init__(self, session):
 		self.skin = OpenWebifConfig.skin
@@ -162,41 +156,41 @@ class OpenWebifConfig(Screen, ConfigListScreen):
 
 	def runSetup(self):
 		self.list = []
-		self.list.append(getConfigListEntry(_("OpenWebInterface Enabled"), config.OpenWebif.enabled))
+		self.list.append((_("OpenWebInterface Enabled"), config.OpenWebif.enabled))
 		if config.OpenWebif.enabled.value:
-			self.list.append(getConfigListEntry(_("Use modern interface"), config.OpenWebif.responsive_enabled))
+			self.list.append((_("Use modern interface"), config.OpenWebif.responsive_enabled))
 			if config.OpenWebif.responsive_enabled.value:
-				self.list.append(getConfigListEntry(_("Theme mode"), config.OpenWebif.responsive_themeMode))
-				self.list.append(getConfigListEntry(_("Use custom Color"), config.OpenWebif.responsive_skinColor))
-			self.list.append(getConfigListEntry(_("Show box name in header"), config.OpenWebif.identifier))
+				self.list.append((_("Theme mode"), config.OpenWebif.responsive_themeMode))
+				self.list.append((_("Use custom Color"), config.OpenWebif.responsive_skinColor))
+			self.list.append((_("Show box name in header"), config.OpenWebif.identifier))
 			if config.OpenWebif.identifier.value:
-				self.list.append(getConfigListEntry(_("Use custom box name"), config.OpenWebif.identifier_custom))
+				self.list.append((_("Use custom box name"), config.OpenWebif.identifier_custom))
 				if config.OpenWebif.identifier_custom.value:
-					self.list.append(getConfigListEntry(_("Custom box name"), config.OpenWebif.identifier_text))
-			self.list.append(getConfigListEntry(_("HTTP port"), config.OpenWebif.port))
-			self.list.append(getConfigListEntry(_("Enable HTTP Authentication"), config.OpenWebif.auth))
-			self.list.append(getConfigListEntry(_("Enable HTTPS"), config.OpenWebif.https_enabled))
+					self.list.append((_("Custom box name"), config.OpenWebif.identifier_text))
+			self.list.append((_("HTTP port"), config.OpenWebif.port))
+			self.list.append((_("Enable HTTP Authentication"), config.OpenWebif.auth))
+			self.list.append((_("Enable HTTPS"), config.OpenWebif.https_enabled))
 			if config.OpenWebif.https_enabled.value:
-				self.list.append(getConfigListEntry(_("HTTPS port"), config.OpenWebif.https_port))
-				self.list.append(getConfigListEntry(_("Enable HTTPS Authentication"), config.OpenWebif.https_auth))
-				self.list.append(getConfigListEntry(_("Require client cert for HTTPS"), config.OpenWebif.https_clientcert))
+				self.list.append((_("HTTPS port"), config.OpenWebif.https_port))
+				self.list.append((_("Enable HTTPS Authentication"), config.OpenWebif.https_auth))
+				self.list.append((_("Require client cert for HTTPS"), config.OpenWebif.https_clientcert))
 			if config.OpenWebif.auth.value:
-				self.list.append(getConfigListEntry(_("Enable Authentication for streaming"), config.OpenWebif.auth_for_streaming))
-				self.list.append(getConfigListEntry(_("Disable remote access for user root"), config.OpenWebif.no_root_access))
+				self.list.append((_("Enable Authentication for streaming"), config.OpenWebif.auth_for_streaming))
+				self.list.append((_("Disable remote access for user root"), config.OpenWebif.no_root_access))
 			if not config.OpenWebif.auth.value or (config.OpenWebif.https_enabled.value and not config.OpenWebif.https_auth.value):
-				self.list.append(getConfigListEntry(_("Without auth only local access is allowed!"), config.OpenWebif.local_access_only))
-				self.list.append(getConfigListEntry(_("Enable access from VPNs"), config.OpenWebif.vpn_access))
-			self.list.append(getConfigListEntry(_("Enable Parental Control"), config.OpenWebif.parentalenabled))
-			self.list.append(getConfigListEntry(_("Streaming port"), config.OpenWebif.streamport))
-			self.list.append(getConfigListEntry(_("Add service name to stream information"), config.OpenWebif.service_name_for_stream))
+				self.list.append((_("Without auth only local access is allowed!"), config.OpenWebif.local_access_only))
+				self.list.append((_("Enable access from VPNs"), config.OpenWebif.vpn_access))
+			self.list.append((_("Enable Parental Control"), config.OpenWebif.parentalenabled))
+			self.list.append((_("Streaming port"), config.OpenWebif.streamport))
+			self.list.append((_("Add service name to stream information"), config.OpenWebif.service_name_for_stream))
 			if imagedistro in ("VTi-Team Image"):
-				self.list.append(getConfigListEntry(_("Character encoding for EPG data"), config.OpenWebif.epg_encoding))
-			self.list.append(getConfigListEntry(_("Allow IPK Upload"), config.OpenWebif.allow_upload_ipk))
-			self.list.append(getConfigListEntry(_("Playback IPTV Streams in browser"), config.OpenWebif.playiptvdirect))
-			self.list.append(getConfigListEntry(_("Debug - Display Tracebacks in browser"), config.OpenWebif.displayTracebacks))
+				self.list.append((_("Character encoding for EPG data"), config.OpenWebif.epg_encoding))
+			self.list.append((_("Allow IPK Upload"), config.OpenWebif.allow_upload_ipk))
+			self.list.append((_("Playback IPTV Streams in browser"), config.OpenWebif.playiptvdirect))
+			self.list.append((_("Debug - Display Tracebacks in browser"), config.OpenWebif.displayTracebacks))
 			# FIXME Submenu
-			# self.list.append(getConfigListEntry(_("Webinterface jQuery UI Theme"), config.OpenWebif.webcache.theme))
-			# self.list.append(getConfigListEntry(_("Movie List Sort"), config.OpenWebif.webcache.moviesort))
+			# self.list.append((_("Webinterface jQuery UI Theme"), config.OpenWebif.webcache.theme))
+			# self.list.append((_("Movie List Sort"), config.OpenWebif.webcache.moviesort))
 
 		self["config"].list = self.list
 		self["config"].l.setList(self.list)
@@ -263,11 +257,12 @@ def main_menu(menuid, **kwargs):
 
 def Plugins(**kwargs):
 	p = PluginDescriptor(where=[PluginDescriptor.WHERE_SESSIONSTART], fnc=startSession)
-	p.weight = 100 #webif should start as last plugin
+	p.weight = 100  # webif should start as last plugin
 	result = [
 		p,
 		PluginDescriptor(where=[PluginDescriptor.WHERE_NETWORKCONFIG_READ], fnc=IfUpIfDown),
 		]
+	screenwidth = getDesktop(0).size().width()
 	if imagedistro in ("openatv"):
 		result.append(PluginDescriptor(name="OpenWebif", description=_("OpenWebif Configuration"), where=PluginDescriptor.WHERE_MENU, fnc=main_menu))
 	if screenwidth and screenwidth == 1920:

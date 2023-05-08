@@ -33,14 +33,14 @@ from twisted.internet import defer
 from twisted.protocols.basic import FileSender
 
 from Plugins.Extensions.OpenWebif.controllers.i18n import _
-from Tools.Directories import fileExists, resolveFilename, SCOPE_PLUGINS
+from Tools.Directories import fileExists
 from Cheetah.Template import Template
 from enigma import eEPGCache
 from Components.config import config
 
 from Plugins.Extensions.OpenWebif.controllers.models.info import getInfo
 from Plugins.Extensions.OpenWebif.controllers.models.config import getCollapsedMenus, getConfigsSections, getShowName, getCustomName, getBoxName
-from Plugins.Extensions.OpenWebif.controllers.defaults import getPublicPath, getViewsPath, EXT_EVENT_INFO_SOURCE, STB_LANG, getIP, HASAUTOTIMER
+from Plugins.Extensions.OpenWebif.controllers.defaults import getPublicPath, getViewsPath, EXT_EVENT_INFO_SOURCE, STB_LANG, getIP, HASAUTOTIMER, TEXTINPUTSUPPORT, _isPluginInstalled
 
 
 def new_getRequestHostname(self):
@@ -113,13 +113,16 @@ class BaseController(resource.Resource):
 		"""
 		request.setHeader("content-type", "text/html")
 		request.setResponseCode(http.NOT_FOUND)
-		request.write(b"<html><head><title>Open Webif</title></head><body><h1>Error 404: Page not found</h1><br />The requested URL was not found on this server.</body></html>")
+		# TODO: i10n
+		request.write(b"<html><head><title>OpenWebif</title></head><body><h1>Error 404: Not found</h1><br>The requested page doesn't exist.</body></html>")
 		request.finish()
 
 	def loadTemplate(self, path, module, args):
-		if fileExists(getViewsPath(path + ".py")) or fileExists(getViewsPath(path + ".pyo")):
+		if fileExists(getViewsPath(path + ".py")) or fileExists(getViewsPath(path + ".pyo")) or fileExists(getViewsPath(path + ".pyc")):
 			if fileExists(getViewsPath(path + ".pyo")):
 				template = imp.load_compiled(module, getViewsPath(path + ".pyo"))
+			elif fileExists(getViewsPath(path + ".pyc")):
+				template = imp.load_compiled(module, getViewsPath(path + ".pyc"))
 			else:
 				template = imp.load_source(module, getViewsPath(path + ".py"))
 			mod = getattr(template, module, None)
@@ -322,9 +325,9 @@ class BaseController(resource.Resource):
 
 		ip = getIP()
 		if ip != None:
-			if fileExists(resolveFilename(SCOPE_PLUGINS, "Extensions/LCD4linux/WebSite.pyo")) or fileExists(resolveFilename(SCOPE_PLUGINS, "Extensions/LCD4linux/WebSite.py")):
+			if _isPluginInstalled("LCD4linux", "WebSite"):
 				lcd4linux_key = "lcd4linux/config"
-				if fileExists(resolveFilename(SCOPE_PLUGINS, "Extensions/WebInterface/plugin.pyo")) or fileExists(resolveFilename(SCOPE_PLUGINS, "Extensions/WebInterface/plugin.py")):
+				if _isPluginInstalled("WebInterface"):
 					try:
 						lcd4linux_port = "http://" + ip + ":" + str(config.plugins.Webinterface.http.port.value) + "/"
 						lcd4linux_key = lcd4linux_port + 'lcd4linux/config'
@@ -360,8 +363,7 @@ class BaseController(resource.Resource):
 		if HASAUTOTIMER:
 			extras.append({'key': 'ajax/at', 'description': _('AutoTimers')})
 
-		if fileExists(resolveFilename(SCOPE_PLUGINS, "Extensions/OpenWebif/controllers/views/ajax/bqe.tmpl")) or fileExists(resolveFilename(SCOPE_PLUGINS, "Extensions/OpenWebif/controllers/views/ajax/bqe.pyo")):
-			extras.append({'key': 'ajax/bqe', 'description': _('BouquetEditor')})
+		extras.append({'key': 'ajax/bqe', 'description': _('BouquetEditor')})
 
 		try:
 			from Plugins.Extensions.EPGRefresh.EPGRefresh import epgrefresh  # noqa: F401
@@ -401,7 +403,7 @@ class BaseController(resource.Resource):
 		except ImportError:
 			pass
 
-		if os.path.exists('/usr/bin/shellinaboxd') and (fileExists(resolveFilename(SCOPE_PLUGINS, "Extensions/OpenWebif/controllers/views/ajax/terminal.tmpl")) or fileExists(resolveFilename(SCOPE_PLUGINS, "Extensions/OpenWebif/controllers/views/ajax/terminal.pyo"))):
+		if os.path.exists('/usr/bin/shellinaboxd'):
 			extras.append({'key': 'ajax/terminal', 'description': _('Terminal')})
 
 		ret['extras'] = extras
@@ -422,4 +424,9 @@ class BaseController(resource.Resource):
 		ret['vti'] = "1" if imagedistro in ("VTi-Team Image") else "0"
 		ret['webtv'] = os.path.exists(getPublicPath('webtv'))
 		ret['stbLang'] = STB_LANG
+		smallremote = config.OpenWebif.webcache.smallremote.value if config.OpenWebif.webcache.smallremote.value else 'new'
+		ret['smallremote'] = smallremote
+		ret['textinputsupport'] = TEXTINPUTSUPPORT
+		ret['debugModeEnabled'] = config.OpenWebif.displayTracebacks.value == True
+
 		return ret

@@ -1,4 +1,3 @@
-#!/usr/bin/python
 # -*- coding: utf-8 -*-
 from __future__ import print_function
 import os
@@ -8,14 +7,27 @@ import re
 
 from Components.Language import language
 from Components.config import config as comp_config
+from Components.Network import iNetwork
 
-### Edit RAED ###
-from Plugins.Extensions.OpenWebif.Network import iNetwork
-# end
+try:
+	from Tools.Directories import isPluginInstalled
+except ImportError:
+	# fallback for old images
+	from Tools.Directories import resolveFilename, SCOPE_PLUGINS
 
-from enigma import eEnv
+	def isPluginInstalled(p, plugin="plugin"):
+		for ext in ['', 'c', 'o']:
+			if os.path.exists(resolveFilename(SCOPE_PLUGINS, "SystemPlugins/%s/%s.py%s" % (p, plugin, ext))):
+				return True
+			if os.path.exists(resolveFilename(SCOPE_PLUGINS, "Extensions/%s/%s.py%s" % (p, plugin, ext))):
+				return True
 
-OPENWEBIFVER = "OWIF 1.4.9"
+
+def _isPluginInstalled(p, plugin="plugin"):
+	return isPluginInstalled(p, plugin)
+
+
+OPENWEBIFVER = "OWIF 1.5.2"
 
 PLUGIN_NAME = 'OpenWebif'
 PLUGIN_DESCRIPTION = "OpenWebif Configuration"
@@ -33,15 +45,19 @@ STB_LANG = language.getLanguage()
 
 MOBILEDEVICE = False
 
+DEBUG_ENABLED = False
+
 #: get transcoding feature
+
+
+def setDebugEnabled(enabled):
+	global DEBUG_ENABLED
+	DEBUG_ENABLED = enabled
 
 
 def getTranscoding():
 	if os.path.isfile("/proc/stb/encoder/0/bitrate"):
-		lp = eEnv.resolve('${libdir}/enigma2/python/Plugins/SystemPlugins/')
-		for p in ['TranscodingSetup', 'TransCodingSetup', 'MultiTransCodingSetup']:
-			if os.path.exists(lp + p + '/plugin.py') or os.path.exists(lp + p + '/plugin.pyo'):
-				return True
+		return isPluginInstalled("TranscodingSetup") or isPluginInstalled("TransCodingSetup") or isPluginInstalled("MultiTransCodingSetup")
 	return False
 
 
@@ -212,6 +228,29 @@ def getATSearchtypes():
 		return {}
 
 
+def getTextInputSupport():
+	try:
+		from enigma import setPrevAsciiCode
+		return True
+	except ImportError:
+		return False
+
+
+def getDefaultRcu():
+	remotetype = "standard"
+	if comp_config.misc.rcused.value == 0:
+		remotetype = "advanced"
+	else:
+		try:
+			# FIXME remove HardwareInfo
+			from Tools.HardwareInfo import HardwareInfo
+			if HardwareInfo().get_device_model() in ("xp1000", "formuler1", "formuler3", "et9000", "et9200", "hd1100", "hd1200"):
+				remotetype = "advanced"
+		except:  # nosec # noqa: E722
+			print("[OpenWebif] wrong hw detection")
+	return remotetype
+
+
 OPENWEBIFPACKAGEVERSION = getOpenwebifPackageVersion()
 
 USERCSSCLASSIC = getUserCSS('/etc/enigma2/owfclassic.css')
@@ -229,3 +268,7 @@ HASVPS = getVPSPlugin()
 HASSERIES = getSeriesPlugin()
 
 ATSEARCHTYPES = getATSearchtypes()
+
+TEXTINPUTSUPPORT = getTextInputSupport()
+
+DEFAULT_RCU = getDefaultRcu()

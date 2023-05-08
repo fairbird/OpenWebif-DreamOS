@@ -127,6 +127,17 @@
 				<input type="checkbox" name="showallpackages"/>
 				#end if
 				</td></tr>
+				<tr><td>$tstrings['tstr_smallremote']</td><td>
+				<select name="selectsmallremote" id="selectsmallremote" style="min-width: 150px;margin: 5px;border:none;font-size: 1em;">
+				#for $sr in $smallremotes
+					#if $sr[0] == $smallremote
+						<option value="$sr[0]" selected="selected">$sr[1]</option>
+					#else
+						<option value="$sr[0]">$sr[1]</option>
+					#end if
+				#end for
+				</select>
+				</td></tr>
 				#if $getVar("responsivedesign", "") != ""
 					<tr><td>$tstrings['use_modern_design']</td><td>
 					#if $responsivedesign
@@ -220,7 +231,7 @@ function deleteBookmark(bm) {
 	}
 
 	$.ajax({
-		url: "/api/removelocation?dirname=" + bm,
+		url: "/api/removelocation?dirname=" + encodeURIComponent(bm),
 		dataType: "json",
 		success: function(loc) {
 			if (loc.result)
@@ -234,13 +245,13 @@ function deleteBookmark(bm) {
 function addBookmark() {
 	bm = $("#addbookmarktext").val();
 
-	if(bm.length==0 || bm.includes(" ")) {
-		alert("Path Error");
+	if(bm.length==0) {
+		alert("Path Errorx");
 		return;
 	}
 
 	$.ajax({
-		url: "/api/addlocation?dirname=" + bm,
+		url: "/api/addlocation?dirname=" + encodeURIComponent(bm),
 		dataType: "json",
 		success: function(loc) {
 			if (loc.result)
@@ -482,6 +493,15 @@ function load_scontent(url) {
 		$("#selectmoviedb").change(function() {
 			$.ajax({
 				url: "api/setwebconfig?moviedb=" + $(this).val(),
+			});
+		});
+		$("#selectsmallremote").change(function() {
+			$.ajax({
+				url: "api/setwebconfig?smallremote=" + $(this).val(),
+				success: function() {
+					window.location.hash = '';
+					window.location.reload(true);
+				}
 			});
 		});
 		return;

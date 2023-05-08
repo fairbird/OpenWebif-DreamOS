@@ -32,7 +32,7 @@
 #end if
 <link type="text/css" href="../css/style.min.css" rel="stylesheet"/>
 <link type="text/css" href="../web/css" rel="stylesheet"/>
-<script type="text/javascript" src="../js/openwebif.min.js?v1.2.20"></script>
+<script type="text/javascript" src="../js/openwebif.min.js?v1.2.28"></script>
 <script type="text/javascript" src="../js/jquery-ui-timepicker-addon.min.js"></script>
 <script type="text/javascript" src="../js/chosen.1.8.2.min.js"></script>
 <script type="text/javascript">initJsTranslation($dumps($tstrings))</script>
@@ -123,7 +123,7 @@ table { font-size:12px; font-family: Verdana,Arial,sans-serif;}
 	<tr>
 		<td class="panel ui-state-hover">
 			#if $moviedb == "Kinopoisk"
-				<a class="tb" target="_blank" href="http://www.kinopoisk.ru/index.php?first=no&kp_query=$quote($event.title)"><img src="../images/kinopoisk.png" style="width:24px; height:24px; margin:0px 3px 0px 0px" title="$tstrings['search_kinopoisk']" border="0"></a>
+				<a class="tb" target="_blank" href="http://www.kinopoisk.ru/index.php?first=no&kp_query=$event.title.replace('(18+)', '').replace('18+', '').replace('(16+)', '').replace('16+', '').replace('(12+)', '').replace('12+', '').replace('(7+)', '').replace('7+', '').replace('(6+)', '').replace('6+', '').replace('(0+)', '').replace('0+', '').replace('+', '')"><img src="../images/kinopoisk.png" style="width:24px; height:24px; margin:0px 3px 0px 0px" title="$tstrings['search_kinopoisk']" border="0"></a>
 			#elif $moviedb == "CSFD"
 				<a class="im tb" target="_blank" href="https://www.csfd.cz/hledat/?q=$event.title" title="$tstrings['search_csfd']">csfd</a>
 			#else

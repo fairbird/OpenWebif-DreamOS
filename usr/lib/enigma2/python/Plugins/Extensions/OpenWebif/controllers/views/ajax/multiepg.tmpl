@@ -24,6 +24,10 @@
 	.wrapper { overflow-x: auto; width: 100%; -ms-overflow-style: -ms-autohiding-scrollbar;}
 	td.border { width: 190px; }
 	.plus.ui-state-default.lbl { border:none; background:none; cursor:default; color:inherit;}
+	.wrapper::-webkit-scrollbar { width: 12px; }
+	#tblinner::-webkit-scrollbar { width: 8px; }
+	::-webkit-scrollbar-track { background: #f1f1f1; }
+	::-webkit-scrollbar-thumb { background: #6784b3; }
 </style>
 
 <div id="navepg">
@@ -114,7 +118,7 @@
 		#set $ev=$evl[0]
 		#set $ref = "data-ref='" + $ev.ref + "'"
 	#end if
-	<td class="border"><div class="service ui-widget-header" $ref><img src="$(picons[$sname])" /> $sname</div></td>
+	<td class="border"><div class="service ui-widget-header" $ref><img src="$(picons[$sname])" /> $(channelnames[$sname])</div></td>
 	#end for
 </tr>
 </thead>
@@ -137,7 +141,7 @@
 <tfoot>
 <tr>
 	#for $sname, $eventlist in six.iteritems($events)
-	<td class="border"><div class="service ui-widget-header"><img src="$(picons[$sname])" /> $sname</div></td>
+	<td class="border"><div class="service ui-widget-header"><img src="$(picons[$sname])" /> $(channelnames[$sname])</div></td>
 	#end for
 </tr>
 </tfoot>
@@ -182,8 +186,8 @@
 			<li>
 				<span class="ui-widget-header">
 					<div>
-						<h2 class="picon" ><img src="$(picons[$sname])" title="$sname" /></h2>
-						<span>$sname</span>
+						<h2 class="picon" ><img src="$(picons[$sname])" title="$(channelnames[$sname])" /></h2>
+						<span>$(channelnames[$sname])</span>
 					</div>
 				</span>
 				<ol cass="eventlist">
@@ -202,12 +206,16 @@
 					#if $event.begin_timestamp < $now and $end > $now
 						#set $iscurr = " ui-state-hover"
 					#end if
+					#if $event['timerStatus'] != ''
+						#set $iscurr = " ui-state-hover"
+					#end if
 					<li class="event" data-ref="$ref" data-id="${event.id}" style="width:${event.duration/6}px;" >
 						<a href="#" class="ui-widget-content ${iscurr}" title="$event['title']">
 						<span class="ename">$event['title']</span>
 						<span class="etime">$strftime("%H:%M", $localtime($event['begin_timestamp']))</span>
 						#if $event['timerStatus'] != ''
-						<span class="etimer $event['timerStatus']">$tstrings['timer']</span>
+							#set tt = $event['timer']['text']
+							<span class="etimer $event['timerStatus']">$tt</span>
 						#end if
 						</a>
 					</li>
