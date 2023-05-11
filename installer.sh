@@ -1,7 +1,7 @@
 #!/bin/bash
 ##setup command=wget https://raw.githubusercontent.com/fairbird/OpenWebif-DreamOS/main/installer.sh -O - | /bin/sh
 
-version=1.7
+version=1.8
 
 if [ -d /usr/lib/python2.6 ]; then
 if [ ! -d /usr/lib/python2.7 ]; then

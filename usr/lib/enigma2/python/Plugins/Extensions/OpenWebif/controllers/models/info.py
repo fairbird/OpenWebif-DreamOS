@@ -31,8 +31,12 @@ import NavigationInstance
 from Components.About import about
 from Components.config import config
 from Components.NimManager import nimmanager
-from Components.Harddisk import harddiskmanager
-from Components.Network import iNetwork
+### Edit RAED ###
+#from Components.Harddisk import harddiskmanager
+#from Components.Network import iNetwork
+from Plugins.Extensions.OpenWebif.Harddisk import harddiskmanager
+from Plugins.Extensions.OpenWebif.Network import iNetwork
+# end
 from ServiceReference import ServiceReference
 from RecordTimer import parseEvent, RecordTimerEntry
 from timer import TimerEntry

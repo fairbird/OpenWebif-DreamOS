@@ -7,7 +7,10 @@ import re
 
 from Components.Language import language
 from Components.config import config as comp_config
-from Components.Network import iNetwork
+### Edit RAED ###
+#from Components.Network import iNetwork
+from Plugins.Extensions.OpenWebif.Network import iNetwork
+# end
 
 try:
 	from Tools.Directories import isPluginInstalled
