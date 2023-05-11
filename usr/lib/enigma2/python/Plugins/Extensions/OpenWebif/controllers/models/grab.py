@@ -71,8 +71,10 @@ class GrabRequest(object):
 
 		self.filepath = "/tmp/screenshot." + fileformat
 		self.container = eConsoleAppContainer()
+		## DreamOS By RAED
 		self.container.appClosed_conn = self.container.appClosed.connect(self.grabFinished)
 		self.container.stdoutAvail_conn = self.container.stdoutAvail.connect(request.write)
+		## End
 		if mode == "lcd":
 			if self.container.execute(command):
 				raise Exception("failed to execute: ", command)
@@ -89,15 +91,19 @@ class GrabRequest(object):
 					sref = ServiceReference(ref).getServiceName()
 			except:  # nosec # noqa: E722
 				sref = 'screenshot'
+		## DreamOS By RAED
 		fd = open(self.filepath)
 		data = fd.read()
 		fd.close()
+		## End
 		sref = sref + '_' + time.strftime("%Y%m%d%H%M%S", time.localtime(time.time()))
 		request.notifyFinish().addErrback(self.requestAborted)
 		request.setHeader('Content-Disposition', 'inline; filename=%s.%s;' % (sref, fileformat))
 		request.setHeader('Content-Type', 'image/%s' % fileformat.replace("jpg", "jpeg"))
+		## DreamOS By RAED
 		request.setHeader('Content-Length', '%i' % len(data))
 		request.write(data)
+		## End
 		# request.setHeader('Expires', 'Sat, 26 Jul 1997 05:00:00 GMT')
 		# request.setHeader('Cache-Control', 'no-store, must-revalidate, post-check=0, pre-check=0')
 		# request.setHeader('Pragma', 'no-cache')
