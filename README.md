@@ -12,5 +12,5 @@ apt update && apt install wget -y
 
 To install plugin directly online from telnet be this command / لتثبيت البلجن مباشرة من خلال الإنترنيت بواسطة التلنت بهذا الأمر
 ```
-wget https://raw.githubusercontent.com/fairbird/OpenWebif-DreamOS/main/installer.sh -O - | /bin/sh
+wget "--no-check-certificate" https://raw.githubusercontent.com/fairbird/OpenWebif-DreamOS/main/installer.sh -O - | /bin/sh
 ```
