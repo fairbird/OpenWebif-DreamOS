@@ -165,9 +165,9 @@ class IpkgController(BaseController):
 		if hasattr(self.request, 'notifyFinish'):
 			self.request.notifyFinish().addErrback(self.connectionError)
 		self.container = eConsoleAppContainer()
-		try: ## DreamOS By RAED
+		try:
 			self.container.appClosed.append(self.NoMoredata)
-		except:
+		except: ## DreamOS By RAED
 			self.container.appClosed_conn = self.container.appClosed.connect(self.NoMoredata)
 		self.IsAlive = True
 		self.olddata = None
@@ -194,10 +194,10 @@ class IpkgController(BaseController):
 		if hasattr(self.request, 'notifyFinish'):
 			self.request.notifyFinish().addErrback(self.connectionError)
 		self.container = eConsoleAppContainer()
-		try: ## DreamOS By RAED
+		try:
 			self.container.dataAvail.append(self.Moredata)
 			self.container.appClosed.append(self.NoMoredata)
-		except:
+		except: ## DreamOS By RAED
 			self.container.dataAvail_conn = self.container.dataAvail.connect(self.Moredata)
 			self.container.appClosed_conn = self.container.appClosed.connect(self.NoMoredata)
 		self.IsAlive = True

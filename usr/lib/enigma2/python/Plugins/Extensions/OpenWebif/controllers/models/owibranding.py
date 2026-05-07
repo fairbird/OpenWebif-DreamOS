@@ -191,6 +191,8 @@ def getAllInfo():
 			model = procmodel.replace("GBQUAD", "Quad").replace("PLUS", " Plus")
 		elif procmodel == "gbquad4k":
 			model = procmodel.replace("gbquad4k", "UHD Quad 4k")
+		elif procmodel == "gbquad4kpro":
+			model = procmodel.replace("gbquad4kpro", "UHD Quad 4k PRO")
 		elif procmodel == "quad4k":
 			model = procmodel.replace("quad4k", "UHD Quad 4k")
 		elif procmodel == "gbue4k":
@@ -198,7 +200,24 @@ def getAllInfo():
 		elif procmodel == "ue4k":
 			model = procmodel.replace("ue4k", "UHD UE 4k")
 		elif procmodel == "gbtrio4k":
-			model = procmodel.replace("gbtrio4k", "UHD Trio 4k")
+			wifi = None
+			if fileExists("/sys/devices/platform/soc/f9890000.ehci/usb1/1-2/idProduct"):
+				f = open("/sys/devices/platform/soc/f9890000.ehci/usb1/1-2/idProduct", 'r')
+				wifi = f.readline().strip().lower()
+				f.close()
+			if wifi == "c82c":
+				procmodel = "gbtrio4kpro"
+				model = "UHD Trio 4k PRO"
+			else:
+				ustymtype = open("/proc/stb/info/type").read()
+				if ustymtype.startswith("11"):
+					procmodel = "gbtrio4ktwin"
+					model = "UHD Trio 4K Twin"
+				elif ustymtype.startswith("12"):
+					model = "UHD Trio 4k"
+				else:  # ustymtype.startswith("10")
+					procmodel = "gbtrio4ksingle"
+					model = "UHD Trio 4k Single"
 	elif fileExists("/proc/stb/info/vumodel") and not fileExists("/proc/stb/info/boxtype"):
 		brand = "Vu+"
 		f = open("/proc/stb/info/vumodel", 'r')
@@ -522,6 +541,10 @@ def getAllInfo():
 			brand = "Zgemma"
 			model = "H11.S"
 			grabpip = 1
+		elif procmodel == "h17":
+			brand = "Zgemma"
+			model = "H17Combo"
+			grabpip = 1
 		elif procmodel == "vs1500":
 			brand = "Vimastec"
 			model = "vs1500"
@@ -535,7 +558,7 @@ def getAllInfo():
 			else:  # sfx6008type.startswith("10")
 				wifi = None
 				if fileExists("/sys/devices/platform/soc/f9890000.ehci/usb1/1-1/idProduct"):
-					f = open("//sys/devices/platform/soc/f9890000.ehci/usb1/1-1/idProduct", 'r')
+					f = open("/sys/devices/platform/soc/f9890000.ehci/usb1/1-1/idProduct", 'r')
 					wifi = f.readline().strip().lower()
 					f.close()
 				if wifi == "f179":
@@ -549,16 +572,25 @@ def getAllInfo():
 		elif procmodel.startswith("sf"):
 			brand = "Octagon"
 			if procmodel.startswith("sf8008"):
-				sf8008type = open("/proc/stb/info/type").read()
-				if sf8008type.startswith("11"):
-					procmodel = "sf8008t"
-					model = "SF8008 4K Twin"
-				elif sf8008type.startswith("12"):
-					procmodel = "sf8008c"
-					model = "SF8008 4K Combo"
-				else:  # sf8008type.startswith("10")
-					procmodel = "sf8008s"
-					model = "SF8008 4K Single"
+				wifi = None
+				if fileExists("/sys/devices/platform/soc/f9890000.ehci/usb1/1-2/idProduct"):
+					f = open("/sys/devices/platform/soc/f9890000.ehci/usb1/1-2/idProduct", 'r')
+					wifi = f.readline().strip().lower()
+					f.close()
+				if wifi == "c82c":
+					procmodel = "sf8008sc"
+					model = "SF8008 4K Supreme"
+				else:
+					sf8008type = open("/proc/stb/info/type").read()
+					if sf8008type.startswith("11"):
+						procmodel = "sf8008t"
+						model = "SF8008 4K Twin"
+					elif sf8008type.startswith("12"):
+						procmodel = "sf8008c"
+						model = "SF8008 4K Combo"
+					else:  # sf8008type.startswith("10")
+						procmodel = "sf8008s"
+						model = "SF8008 4K Single"
 			else:
 				model = procmodel.upper()
 		elif procmodel == "sx88v2":
@@ -571,12 +603,24 @@ def getAllInfo():
 			grabpip = 1
 		elif procmodel == "ustym4kpro":
 			brand = "uClan"
-			ustymtype = open("/proc/stb/info/type").read()
-			if ustymtype.startswith("11"):
-				procmodel = "ustym4ktwin"
-				model = "uStym 4K Twin"
-			elif ustymtype.startswith("12"):
-				model = "Usytm 4K Pro"
+			wifi = None
+			if fileExists("/sys/devices/platform/soc/f9890000.ehci/usb1/1-2/idProduct"):
+				f = open("/sys/devices/platform/soc/f9890000.ehci/usb1/1-2/idProduct", 'r')
+				wifi = f.readline().strip().lower()
+				f.close()
+			if wifi == "c82c":
+				procmodel = "ustym4kultimate"
+				model = "uStym 4K Pro Ultimate"
+			else:
+				ustymtype = open("/proc/stb/info/type").read()
+				if ustymtype.startswith("11"):
+					procmodel = "ustym4ktwin"
+					model = "uStym 4K Pro Twin"
+				elif ustymtype.startswith("12"):
+					model = "Usytm 4K Pro"
+				else:  # ustymtype.startswith("10")
+					procmodel = "ustym4ksingle"
+					model = "Ustym 4K Pro Single"
 		elif procmodel == "ustym4ks2ottx":
 			brand = "uClan"
 			model = "Ustym 4K S2 OTT X"
@@ -795,7 +839,7 @@ def getAllInfo():
 		remote = "dual"
 	elif procmodel in ("sh1", "lc"):
 		remote = "sh1"
-	elif procmodel in ("hzero", "h3", "h4", "h5", "h6", "h7", "h8", "h9", "i55plus", "h8.2h", "h9.s", "h9.t", "h9.2h", "h9.2s", "h9combo", "h9combose", "h9twin", "h9twinse", "h9.s.se", "h9se", "h9.2s.se", "h9.2h.se", "h10.t", "h10.2s", "h10.2h", "h11", "h11.s"):
+	elif procmodel in ("hzero", "h3", "h4", "h5", "h6", "h7", "h8", "h9", "i55plus", "h8.2h", "h9.s", "h9.t", "h9.2h", "h9.2s", "h9combo", "h9combose", "h9twin", "h9twinse", "h9.s.se", "h9se", "h9.2s.se", "h9.2h.se", "h10.t", "h10.2s", "h10.2h", "h11", "h11.s", "h17"):
 		remote = "h3"
 	elif procmodel == "i55":
 		remote = "i55"

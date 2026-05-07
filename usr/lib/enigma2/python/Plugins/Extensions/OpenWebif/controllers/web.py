@@ -57,7 +57,7 @@ def whoami(request):
 		port = comp_config.OpenWebif.https_port.value
 		proto = 'https'
 	ourhost = request.getHeader('host')
-	m = match('.+\:(\d+)$', ourhost)
+	m = match('.+\\:(\\d+)$', ourhost)
 	if m is not None:
 		port = m.group(1)
 	return {'proto': proto, 'port': port}
@@ -549,7 +549,7 @@ class WebController(BaseController):
 			if session.GetAuth(request) is not None:
 				auth = ':'.join(session.GetAuth(request)) + "@"
 			else:
-				auth = '-sid:' + str(session.GetSID(request)) + "@"
+				auth = '-sid:' + ensure_str(session.GetSID(request)) + "@"
 		else:
 			auth = ''
 		portNumber = comp_config.OpenWebif.streamport.value
@@ -588,7 +588,7 @@ class WebController(BaseController):
 			if session.GetAuth(request) is not None:
 				auth = ':'.join(session.GetAuth(request)) + "@"
 			else:
-				auth = '-sid:' + str(session.GetSID(request)) + "@"
+				auth = '-sid:' + ensure_str(session.GetSID(request)) + "@"
 		else:
 			auth = ''
 		portNumber = comp_config.OpenWebif.streamport.value
@@ -1081,7 +1081,8 @@ class WebController(BaseController):
 		elif b"eit" in list(request.args.keys()) and isinstance(request.args[b"eit"][0], int):
 			eit = int(request.args[b"eit"][0])
 		else:
-			queryTime = int(request.args[b"begin"][0]) + (int(request.args[b"end"][0]) - int(request.args[b"begin"][0])) // 2
+			#This might need further investigation. Dp npt get exactly the middle, take 20% so we usually expect to get first event.
+			queryTime = int(request.args[b"begin"][0]) + (int(request.args[b"end"][0]) - int(request.args[b"begin"][0])) // 5
 			epg = EPG()
 			eventid = epg.getEventIdByTime(sRef, queryTime)
 			if eventid is not None:
@@ -2241,6 +2242,26 @@ class WebController(BaseController):
 		return {
 			"result": True,
 			"message": "EPG data loaded"
+		}
+
+	def P_clearepg(self, request):
+		"""
+		Request handler for the `clearepg` endpoint.
+
+		.. note::
+
+			Not available in *Enigma2 WebInterface API*.
+
+		Args:
+			request (twisted.web.server.Request): HTTP request object
+		Returns:
+			HTTP response with headers
+		"""
+		EPG().clear()
+
+		return {
+			"result": True,
+			"message": "EPG data cleared"
 		}
 
 	def P_getsubtitles(self, request):
